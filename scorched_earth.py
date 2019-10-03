@@ -13,9 +13,9 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 WHITE = (255, 255, 255)
 GROUND = (125, 125, 125)
-TANK_SIZE = (50, 50)
 
-# Super simple game intended for teaching an 11 year old
+# Super simple game intended for teaching an 11 year old.
+# TODO: Hmm, maybe look into sprites but that requires classes...  Maybe just separate python modules?
 
 def update_bullet(tank_x, tank_y, bullet, v_initial, angle, time_val):
     """ See https://en.wikipedia.org/wiki/Projectile_motion for the equation 'y = ax + bx^2'"""
@@ -26,10 +26,11 @@ def update_bullet(tank_x, tank_y, bullet, v_initial, angle, time_val):
     bullet.x = tank_x + x
     bullet.y = tank_y - y
 
-def explosion(screen, bullet, enemy_tank):
+def explosion(screen, bullet, enemy_tank_coords, enemy_tank_size):
     """ Make an explosion if the bullet hits the enemy tank"""
-    x_in_range = bullet.x > enemy_tank.left and bullet.x < enemy_tank.right
-    y_in_range = bullet.y > enemy_tank.top and bullet.y < enemy_tank.bottom
+    x_in_range = bullet.x > enemy_tank_coords[0] - enemy_tank_size[0]/2 and bullet.x < enemy_tank_coords[0] + enemy_tank_size[0]/2
+    y_in_range = bullet.y > enemy_tank_coords[1] - enemy_tank_size[1]/2 and bullet.y < enemy_tank_coords[1] + enemy_tank_size[1]/2
+
     if x_in_range and y_in_range:
         pygame.draw.circle(screen, RED, (bullet.x, bullet.y), 100)
         return True
@@ -64,21 +65,27 @@ def main():
     screen.blit(background, (0, 0))
     pygame.display.flip()
 
-    # Origin is in the upper left.  These are the starting positions, we can update them later
-    my_tank_coord = terrain[randint(0, len(terrain)-4)]
-    my_tank_left, my_tank_top, my_tank_width, my_tank_height = (my_tank_coord[0], my_tank_coord[1], TANK_SIZE[0], TANK_SIZE[1])
-    #my_tank = pygame.Rect(my_tank_left, my_tank_top, my_tank_width, my_tank_height)
-    my_turret = (my_tank_left + my_tank_width/2, my_tank_left + my_tank_height/2)
-    my_tank = pygame.image.load('tank1.png')
+    # The tank images to use
+    tank_facing_right = pygame.image.load('tank_facing_right.png')
+    tank_facing_left = pygame.image.load('tank_facing_left.png')
+    tank_size = tank_facing_right.get_rect().size
+
+    # Origin is in the upper left.  These are the positions of the turret, or the middle of the tank
+    my_tank_coords = terrain[randint(0, len(terrain)-4)]
+    my_turret = (my_tank_coords[0] - tank_size[0]/2, my_tank_coords[1] - tank_size[1]/2)
+
+    enemy_tank_coords = terrain[randint(0, len(terrain)-4)]
+    enemy_turret = (enemy_tank_coords[0] - tank_size[0]/2, enemy_tank_coords[1] - tank_size[1]/2)
+
+    if my_tank_coords[0] < enemy_tank_coords[0]:
+        my_tank = tank_facing_right
+        enemy_tank = tank_facing_left
+    else:
+        my_tank = tank_facing_left
+        enemy_tank = tank_facing_right
+
     screen.blit(my_tank, my_turret)
-
-    enemy_tank_coord = terrain[randint(0, len(terrain)-4)]
-    enemy_tank_left, enemy_tank_top, enemy_tank_width, enemy_tank_height = (enemy_tank_coord[0], enemy_tank_coord[1], TANK_SIZE[0], TANK_SIZE[1]) 
-    enemy_tank = pygame.Rect(enemy_tank_left, enemy_tank_top, enemy_tank_width, enemy_tank_height)
-
-#    pygame.draw.rect(screen, BLACK, my_tank)
-    pygame.draw.rect(screen, BLACK, enemy_tank)
-    print(enemy_tank_coord)
+    screen.blit(enemy_tank, enemy_turret)
 
     # default values of angle and muzzle velocity
     v_initial = 50 # m/s
@@ -111,30 +118,30 @@ def main():
         elif keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER]:
             print('Pew Pew!!')
         
-            # TODO: use the keyboard input for angle (up/down) and velocity (+/-), and enter or spacebar to shoot
+            # use the keyboard input for angle (up/down) and velocity (+/-), and spacebar to shoot
             start_time = time.time()
             time_step = 0.25 # in seconds
-            bullet = pygame.Rect(my_tank_left, my_tank_top, 5, 5)
+            bullet = pygame.Rect(my_tank_coords[0], my_tank_coords[1], 5, 5)
             while bullet.y < WINDOWHEIGHT:
                 time_diff = (time.time() - start_time) * 10
-                update_bullet(my_tank_left, my_tank_top, bullet, v_initial, angle, time_diff)
+                update_bullet(my_tank_coords[0], my_tank_coords[1], bullet, v_initial, angle, time_diff)
 
                 pygame.draw.rect(screen, RED, bullet)
 
-                exploded = explosion(screen, bullet, enemy_tank)
+                exploded = explosion(screen, bullet, enemy_tank_coords, tank_size)
 
                 pygame.display.update()
 
                 if exploded:
                     break
 
+        # TODO: find a way to avoid this extra step or make it a function
         screen.blit(background, (0, 0))
         text_surface = font.render('Angle: %d, Velocity: %d' % (angle, v_initial), True, BLACK, 0)
         screen.blit(text_surface, text_rect)
         pygame.draw.polygon(screen, GROUND, terrain)
-#        pygame.draw.rect(screen, BLACK, my_tank)
         screen.blit(my_tank, my_turret)
-        pygame.draw.rect(screen, BLACK, enemy_tank)
+        screen.blit(enemy_tank, enemy_turret)
         pygame.time.wait(50)
         pygame.display.update()
     
