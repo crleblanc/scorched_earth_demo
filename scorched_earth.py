@@ -37,6 +37,27 @@ def explosion(screen, bullet, enemy_tank_coords, enemy_tank_size):
 
     return False
 
+def shoot_the_gun(screen, tank_coords, other_tank_coords, v_initial, angle, tank_size):
+    # use the keyboard input for angle (up/down) and velocity (+/-), and spacebar to shoot
+    start_time = time.time()
+    time_step = 0.25 # in seconds
+    bullet = pygame.Rect(tank_coords[0], tank_coords[1], 5, 5)
+    exploded = False
+    while bullet.y < WINDOWHEIGHT:
+        time_diff = (time.time() - start_time) * 10
+        update_bullet(tank_coords[0], tank_coords[1], bullet, v_initial, angle, time_diff)
+
+        pygame.draw.rect(screen, RED, bullet)
+
+        exploded = explosion(screen, bullet, other_tank_coords, tank_size)
+
+        pygame.display.update()
+
+        if exploded:
+            break
+
+    return exploded
+
 
 def main():
     pygame.init()
@@ -117,23 +138,20 @@ def main():
                 v_initial -= 1                        
         elif keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER]:
             print('Pew Pew!!')
+            
+            enemy_hit = shoot_the_gun(screen, my_tank_coords, enemy_tank_coords, v_initial, angle, tank_size)
+    
+            # TODO: Have the enemy fire at us, guessing the right trajectory
+            if not enemy_hit:
+                # TODO: have the AI guess at v_initial and angle
+                if my_tank_coords[0] > enemy_tank_coords[0]:
+                    angle_guess = randint(0, 80)
+                else:
+                    angle_guess = randint(100, 150)
         
-            # use the keyboard input for angle (up/down) and velocity (+/-), and spacebar to shoot
-            start_time = time.time()
-            time_step = 0.25 # in seconds
-            bullet = pygame.Rect(my_tank_coords[0], my_tank_coords[1], 5, 5)
-            while bullet.y < WINDOWHEIGHT:
-                time_diff = (time.time() - start_time) * 10
-                update_bullet(my_tank_coords[0], my_tank_coords[1], bullet, v_initial, angle, time_diff)
-
-                pygame.draw.rect(screen, RED, bullet)
-
-                exploded = explosion(screen, bullet, enemy_tank_coords, tank_size)
-
-                pygame.display.update()
-
-                if exploded:
-                    break
+                v_guess = randint(30, 100)
+                
+                good_guy_hit = shoot_the_gun(screen, enemy_tank_coords, my_tank_coords, v_guess, angle_guess, tank_size)
 
         # TODO: find a way to avoid this extra step or make it a function
         screen.blit(background, (0, 0))
