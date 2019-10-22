@@ -13,14 +13,19 @@ BLUE = (0, 0, 255)
 WHITE = (255, 255, 255)
 GROUND = (125, 125, 125)
 
-# TODO: sprites for tank(s), bullets, terrain.
+
 class Tank(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, left_or_right):
         super().__init__()
-        self.image = pygame.image.load('tank_facing_right.png')
+
+        if left_or_right == 'right':
+            self.image = pygame.image.load('tank_facing_right.png')
+        else:
+            self.image = pygame.image.load('tank_facing_left.png')
+
         self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.x = x - self.rect[2] // 2
+        self.rect.y = y - self.rect[3]
 
 class Terrain(pygame.sprite.Sprite):
     def __init__(self):
@@ -29,16 +34,16 @@ class Terrain(pygame.sprite.Sprite):
         self.image.fill(BLUE)
  
         border = 100
-        points = []
+        self.points = []
         for x in range(0, WINDOWWIDTH, 75):
-            y = randint(0+border, WINDOWHEIGHT-border)
-            points.append((x, y))
+            y = randint(200, WINDOWHEIGHT-border)
+            self.points.append((x, y))
 
-        points.append((WINDOWWIDTH, WINDOWHEIGHT))
-        points.append((0, WINDOWHEIGHT))
-        points.append(points[0])
+        self.points.append((WINDOWWIDTH, WINDOWHEIGHT))
+        self.points.append((0, WINDOWHEIGHT))
+        self.points.append(self.points[0])
 
-        pygame.draw.polygon(self.image, GROUND, points)
+        pygame.draw.polygon(self.image, GROUND, self.points)
         self.rect = self.image.get_rect()
         
 
@@ -51,8 +56,8 @@ class Main:
         self.default_angle = 45 # angle in degrees from a flat plane
         self.velocity = self.default_velocity
         self.angle = self.default_angle
-        # self.terrain = None
-        self.group = None
+        self.bg_group = pygame.sprite.Group()
+        self.fg_group = pygame.sprite.Group()
 
         pygame.display.set_caption('Basic Scorched Earth')
     
@@ -62,7 +67,6 @@ class Main:
             if event.type == pygame.QUIT:
                 sys.exit()
 
-        # TODO: unify with the approach above
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] or keys[pygame.K_KP8]:
             self.angle += 1
@@ -88,13 +92,20 @@ class Main:
         self.make_background()
 
         terrain = Terrain()
-        my_tank = Tank(100, 100)
-        enemy_tank = Tank(300, 100)
+        my_tank_x, my_tank_y = terrain.points[randint(0, len(terrain.points)//2)]
+        my_tank = Tank(my_tank_x, my_tank_y, 'right')
 
-        self.group = pygame.sprite.Group()
-        self.group.add(my_tank)
-        self.group.add(enemy_tank)
-        self.group.add(terrain)
+        enemy_tank_x, enemy_tank_y = terrain.points[randint(len(terrain.points)//2, len(terrain.points)-3)]
+        enemy_tank = Tank(enemy_tank_x, enemy_tank_y, 'left')
+
+        self.bg_group.empty()
+        self.bg_group.add(terrain)
+        self.bg_group.draw(self.screen)
+
+        # Hmm, sometimes the tanks are drawn behind the background so remove the terrain from the group
+        self.bg_group.empty()
+        self.fg_group.add(my_tank)
+        self.fg_group.add(enemy_tank)
         self.update()
 
         run = True
@@ -116,9 +127,8 @@ class Main:
         self.screen.blit(background, (0, 0))
 
     def update(self):
-        self.group.update()
-        self.group.draw(self.screen)
-        pygame.display.update()
+        self.fg_group.draw(self.screen)
+        pygame.display.flip()
     
     def play(self):
         run = True
